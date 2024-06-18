@@ -1,57 +1,52 @@
 # API    
-+ resultId・・・投票される側
-+ name・・・投票される側の氏名
-+ clientId・・・投票する側
++ contestant・・・競技者
++ voter・・・投票する人
+***
+### 新規投票者ID取得
+#### API
+`GET /v1/voter/new`
+#### レスポンス例
+``` json
+{
+  "voter": "d48a8914-7a40-49b5-a024-d66aea816a56"
+}
+```
 ***
 ### 投票する（利用者）
 #### API
-`v1/voting/[clientID]`   
-#### アクセスメソッド
-`POST`
+`POST /v1/voting/[voter]`   
 #### ボディ例
 ``` json
 {
-      "name": "山田太郎",
-      "resultId": "007"
+  "contestant": 1,
 }
 ```
 #### レスポンス例
 ``` json
 {
   "isActive": true,
-  "_id": "666fd2f558cf13e77f853ca6",
-  "clientId": "000",
-  "name": "山田太郎",
-  "resultId": "007",
-  "createdAt": "2024-06-17T06:08:53.204Z",
+  "_id": "667184307baa1b65f4ae0046",
+  "voter": "d48a8914-7a40-49b5-a024-d66aea816a56",
+  "contestant": "1",
+  "createdAt": "2024-06-18T12:57:20.862Z",
   "__v": 0
 }
 ```
 ***
 ### 投票結果の表示（運営）
 #### API
-`v1/voting/`   
-#### アクセスメソッド
-`GET`
+`GET /v1/voting/`   
 #### レスポンス例
 ```json
 {
-  "results": [
+  "result": [
     {
-      "response": "007",
-      "name": "山田太郎",
-      "count": 1,
-      "percent": 25
+      "contestant": "1",
+      "count": 3,
+      "percent": 75
     },
     {
-      "response": "006",
-      "name": "上田太郎",
-      "count": 2,
-      "percent": 50
-    },
-    {
-      "response": "005",
-      "name": "前田太郎",
+      "contestant": "2",
       "count": 1,
       "percent": 25
     }

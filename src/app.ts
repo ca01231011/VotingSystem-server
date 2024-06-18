@@ -2,7 +2,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import mongoose from 'mongoose';
 import { v4 as uuidv4 } from "uuid";
-import { Result } from './models';
+import { Votes } from './models';
 
 //MongoDBにつなぐ準備
 mongoose.connect("mongodb://mongo:27017/votingDB", {
@@ -23,17 +23,21 @@ const PORT = process.env.PORT || 3000;
 //リクエストボディをJSONとして解釈する
 app.use(bodyParser.json());
 
+// 新規投票者ID取得
+app.get('/v1/voter/new', async (req, res) => {
+  res.json({ voter: uuidv4() });
+});
+
 
 // 投票する（利用者）
-app.post('/v1/voting/:clientId', async (req, res) => {
+app.post('/v1/voting/:voter', async (req, res) => {
   try {
-    const newResult = new Result({
-      clientId: req.params.clientId,
-      name: req.body.name,
-      resultId: req.body.resultId,
+    const newVotes = new Votes({
+      voter: req.params.voter,
+      contestant: req.body.contestant,
     });
-    await newResult.save();
-    res.status(201).json(newResult);
+    await newVotes.save();
+    res.status(201).json(newVotes);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }
@@ -41,33 +45,32 @@ app.post('/v1/voting/:clientId', async (req, res) => {
 
 
 // 投票結果の表示 (運営)
-app.get('/v1/voting', async (req, res) => {
+app.get('/v1/result', async (req, res) => {
   try {
-    const results = await Result.find().exec();
-    if (!results) return res.status(404).json({ message: "No result found." });
-    const resultCount: {[key: string]: {count: number, name: string}} = {};
-    results.forEach((result) => {
-      if(!resultCount[result.resultId]) {
-        resultCount[result.resultId] = {
+    const result = await Votes.find().exec();
+    if (!result) return res.status(404).json({ message: "No result found." });
+    const resultCount: {[key: string]: {count: number, contestant: string}} = {};
+    result.forEach((votes) => {
+      if(!resultCount[votes.contestant]) {
+        resultCount[votes.contestant] = {
           count: 0,
-          name: result.name,
+          contestant: votes.contestant,
         }
       }
-      resultCount[result.resultId].count++;
+      resultCount[votes.contestant].count++;
     })
-    const totalResults = results.length;
+    const totalVotes = result.length;
     const resultSummary = Object.keys(resultCount).map((target) => ({
-      response: target,
-      name: resultCount[target].name,
+      contestant: resultCount[target].contestant,
       count: resultCount[target].count,
-      percent: (resultCount[target].count / totalResults) * 100,
-      
+      percent: (resultCount[target].count / totalVotes) * 100,  
     }));
-    res.json({results: resultSummary});
+    res.json({result: resultSummary});
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 });
+
 
 
 
