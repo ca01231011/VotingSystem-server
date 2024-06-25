@@ -105,8 +105,12 @@ app.post('/vote_status', async (req, res) => {
     const reqNo: number = Number(req.body.no);
     const reqStatus: number = Number(req.body.status);
     // 管理者IDが一致するかチェック
-    if(!(reqCode === "aaaa")) {   // 管理者IDを変更する
+    if(reqCode !== "aaaa") {   // 管理者IDを変更する
       return  res.status(400).json("The code is incorrect");
+    }
+    // statusが0または1以外のときエラーを返す
+    if(reqStatus !== 1 && reqStatus !== 0) {
+      return  res.status(400).json("The status is incorrect");
     }
     const status = await Status.findOneAndUpdate({no: reqNo}, {no: reqNo, status: reqStatus}, {returnDocument: 'after',upsert: true}).exec();
     // 変更後のデータを返す
