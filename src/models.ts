@@ -9,7 +9,6 @@ interface IVotes extends Document {
   isActive: boolean;
 }
 interface IStatus extends Document {
-  code: string,
   no: number,
   status: number,
   createdAt: Date;
@@ -26,7 +25,6 @@ const votesSchema: Schema = new Schema({
 });
 
 const statusSchema: Schema = new Schema({
-  code: { type: String, required: true },
   no: { type: Number, required: true },
   status: { type: Number, required: true },
   createdAt: { type: Date, default: Date.now },
@@ -35,4 +33,4 @@ const statusSchema: Schema = new Schema({
 
 
 export const Votes = mongoose.model<IVotes>('Votes', votesSchema);
-export const Status = mongoose.model<IStatus>('Contestant', statusSchema);
+export const Status = mongoose.model<IStatus>('Status', statusSchema);

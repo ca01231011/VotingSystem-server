@@ -101,13 +101,16 @@ app.get('/vote_status', async (req, res) => {
 // 作品への投票 オープン/クローズ切り替え
 app.post('/vote_status', async (req, res) => {
   try {
-    const newStatus = new Status({
-      code: req.body.code,
-      no: req.body.no,
-      status: req.body.status,
-    });
-    await newStatus.save();
-    res.status(201).json(newStatus);
+    const reqCode: string = req.body.code;
+    const reqNo: number = Number(req.body.no);
+    const reqStatus: number = Number(req.body.status);
+    // 管理者IDが一致するかチェック
+    if(!(reqCode === "aaaa")) {   // 管理者IDを変更する
+      return  res.status(400).json("The code is incorrect");
+    }
+    const status = await Status.findOneAndUpdate({no: reqNo}, {no: reqNo, status: reqStatus}, {returnDocument: 'after',upsert: true}).exec();
+    // 変更後のデータを返す
+    res.status(201).json(status);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }
