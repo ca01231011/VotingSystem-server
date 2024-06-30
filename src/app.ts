@@ -4,6 +4,9 @@ import mongoose from 'mongoose';
 import { v4 as uuidv4 } from "uuid";
 import { Votes } from './models';
 import { Status } from './models';
+import { Lottery } from './models';
+import cors from 'cors';
+import cookieparser from 'cookie-parser';
 
 //MongoDBにつなぐ準備
 mongoose.connect("mongodb://mongo:27017/votingDB", {
@@ -21,23 +24,69 @@ mongoose.connect("mongodb://mongo:27017/votingDB", {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// CORSを許可
+app.use(cors({"origin": "http://localhost" ,"credentials": true}));
+app.use(cookieparser());
+
 //リクエストボディをJSONとして解釈する
 app.use(bodyParser.json());
 
 // 新規投票者ID取得
 app.get('/voter/new', async (req, res) => {
-  res.json({ voter: uuidv4() });
+    //cookie自体が存在する場合のみ、その中身を取得
+    if (req.cookies) {
+      //リクエストからclientIdという名前のcookieを取得
+      const voter = req.cookies.voter;
+      if (voter) {
+        //clientIdがあればそのまま返す
+        res.cookie('voter', voter, { maxAge: 28800 });      
+        return res.json({ voter });
+      }
+    }
+  
+    const newId = uuidv4();
+    //newIDをclientIdという名前でcookieに保存。有効期限は8時間
+    res.cookie('voter', newId, { maxAge: 28800 });
+    res.json({ voter: newId });
 });
 
+// 投票者ステータス取得
+app.get('/voter/:voter', async (req, res) => {
+  const voter = req.params.voter;
+  const myVotes = await Votes.find({voter: voter}).sort({createdAt: 1}).exec();
+  const myLottery: string[] = [];
+  myVotes.forEach((vote) => {
+    myLottery.push(vote.lottery)
+  })
+  res.json({voter: voter, lottery: myLottery});
+})
+
+app.post('/lottery', async (req, res) => {
+  try {
+    const newLottery = new Lottery({
+      lottery: 0
+    });
+    await newLottery.save();
+    res.status(201).json(newLottery);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+});
 
 // 作品へのスコア投票
 app.post('/vote', async (req, res) => {
   try {
+    const lotteryNum = await Lottery.findOneAndUpdate({}, {$inc: {lottery: 1}}).exec();
+    if(!lotteryNum) {
+      return res.status(404).json("lottery not found");
+    }
+    const lottery = lotteryNum.lottery.toString()
     const newVotes = new Votes({
       voter: req.body.voter,
       no: req.body.no,
       type: req.body.type,
       score: req.body.score,
+      lottery: lottery
     });
     await newVotes.save();
     res.status(201).json(newVotes);
