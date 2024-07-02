@@ -26,7 +26,7 @@ const PORT = process.env.PORT || 3000;
 
 // CORSを許可
 app.use(cors({"origin": "http://localhost" ,"credentials": true}));
-app.use(cors());
+
 app.use(cookieparser());
 
 //リクエストボディをJSONとして解釈する
@@ -81,6 +81,12 @@ app.post('/lottery', async (req, res) => {
 // 作品へのスコア投票
 app.post('/vote', async (req, res) => {
   try {
+    const status = await Status.findOne({no: req.body.no}).exec();
+    if(status) {
+      if(status.status === 0) {
+        return res.status(400).json("Voting is closed");
+      }
+    }
     const lotteryNum = await Lottery.findOneAndUpdate({}, {$inc: {lottery: 1}}).exec();
     if(!lotteryNum) {
       return res.status(404).json("lottery not found");
