@@ -26,6 +26,7 @@ const PORT = process.env.PORT || 3000;
 
 // CORSを許可
 app.use(cors({"origin": "http://localhost" ,"credentials": true}));
+app.use(cors());
 app.use(cookieparser());
 
 //リクエストボディをJSONとして解釈する
@@ -55,12 +56,16 @@ app.get('/voter/:voter', async (req, res) => {
   const voter = req.params.voter;
   const myVotes = await Votes.find({voter: voter}).sort({createdAt: 1}).exec();
   const myLottery: string[] = [];
+  const no: number[] = [];
   myVotes.forEach((vote) => {
-    myLottery.push(vote.lottery)
+    myLottery.push(vote.lottery);
+    no.push(vote.no);
   })
-  res.json({voter: voter, lottery: myLottery});
+  res.json({voter: voter, lottery: myLottery, voted: no});
 })
 
+
+// 抽選番号の初期化
 app.post('/lottery', async (req, res) => {
   try {
     const newLottery = new Lottery({
