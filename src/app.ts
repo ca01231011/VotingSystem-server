@@ -4,9 +4,12 @@ import mongoose from 'mongoose';
 import { v4 as uuidv4 } from "uuid";
 import { Votes } from './models';
 import { Status } from './models';
-import { Lottery } from './models';
+import { promises as fs } from 'fs';
+import { Mutex } from 'async-mutex';
+import path from 'path';
 import cors from 'cors';
 import cookieparser from 'cookie-parser';
+
 
 //MongoDBにつなぐ準備
 mongoose.connect("mongodb://mongo:27017/votingDB", {
@@ -24,6 +27,9 @@ mongoose.connect("mongodb://mongo:27017/votingDB", {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const mutex = new Mutex();  //排他処理用のmutex
+const lotteryFilePath = path.join(__dirname, './lottery.json');
+
 // CORSを許可
 app.use(cors({"origin": "http://localhost" ,"credentials": true}));
 
@@ -31,6 +37,12 @@ app.use(cookieparser());
 
 //リクエストボディをJSONとして解釈する
 app.use(bodyParser.json());
+
+//遅延処理関数
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 
 // 新規投票者ID取得
 app.get('/voter/new', async (req, res) => {
@@ -65,44 +77,38 @@ app.get('/voter/:voter', async (req, res) => {
 })
 
 
-// 抽選番号の初期化
-app.post('/lottery', async (req, res) => {
-  try {
-    const newLottery = new Lottery({
-      lottery: 0
-    });
-    await newLottery.save();
-    res.status(201).json(newLottery);
-  } catch (error: any) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
 // 作品へのスコア投票
 app.post('/vote', async (req, res) => {
+  const release = await mutex.acquire(); 
   try {
     const status = await Status.findOne({no: req.body.no}).exec();
     if(status) {
       if(status.status === 0) {
-        return res.status(400).json("Voting is closed");
+        return res.status(400).json({ message: "Voting is closed" });
       }
     }
-    const lotteryNum = await Lottery.findOneAndUpdate({}, {$inc: {lottery: 1}}).exec();
-    if(!lotteryNum) {
-      return res.status(404).json("lottery not found");
-    }
-    const lottery = lotteryNum.lottery.toString()
+    //データを読む
+    const lottery = JSON.parse(await fs.readFile(lotteryFilePath, 'utf8'));
+    const oldId = lottery.id; 
+    lottery.id += 1;
+
+    await delay(5000);  //同時実行のシミュレーションに5秒待つ
+    //データ書き込み
+    await fs.writeFile(lotteryFilePath, JSON.stringify(lottery, null, 2), 'utf8');
+
     const newVotes = new Votes({
       voter: req.body.voter,
       no: req.body.no,
       type: req.body.type,
       score: req.body.score,
-      lottery: lottery
+      lottery: oldId
     });
     await newVotes.save();
     res.status(201).json(newVotes);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
+  } finally {
+    release();  //mutexを解放
   }
 });
 
@@ -150,7 +156,7 @@ app.get('/vote_status', async (req, res) => {
     const noNumber = Number(noParam);
     const status = await Status.findOne({no: noNumber}).exec();
     if(!status) {
-      return res.status(404).json("collection not found");
+      return res.status(404).json({ message: "collection status not found" });
     }
     res.json({no: status.no, status: status.status});
   } catch (error: any) {
@@ -166,11 +172,11 @@ app.post('/vote_status', async (req, res) => {
     const reqStatus: number = Number(req.body.status);
     // 管理者IDが一致するかチェック
     if(reqCode !== "aaaa") {   // 管理者IDを変更する
-      return  res.status(400).json("The code is incorrect");
+      return  res.status(400).json({ message: "The code is incorrect" });
     }
     // statusが0または1以外のときエラーを返す
     if(reqStatus !== 1 && reqStatus !== 0) {
-      return  res.status(400).json("The status is incorrect");
+      return  res.status(400).json({ message: "The status is incorrect" });
     }
     const status = await Status.findOneAndUpdate({no: reqNo}, {no: reqNo, status: reqStatus}, {returnDocument: 'after',upsert: true}).exec();
     // 変更後のデータを返す
