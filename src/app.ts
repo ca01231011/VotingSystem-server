@@ -87,15 +87,21 @@ app.post('/vote', async (req, res) => {
         return res.status(400).json({ message: "Voting is closed" });
       }
     }
-    //データを読む
-    const lottery = JSON.parse(await fs.readFile(lotteryFilePath, 'utf8'));
-    const oldId = lottery.id; 
-    lottery.id += 1;
+    // 投票履歴から懸賞番号を取り出す
+    const voted = await Votes.findOne({ voter: req.body.voter}).exec();
+    let oldId;
+    if(voted) {
+      oldId = voted.lottery;
+    } else {
+      //データを読む
+      const lottery = JSON.parse(await fs.readFile(lotteryFilePath, 'utf8'));
+      oldId = lottery.id; 
+      lottery.id += 1;
 
-    await delay(5000);  //同時実行のシミュレーションに5秒待つ
-    //データ書き込み
-    await fs.writeFile(lotteryFilePath, JSON.stringify(lottery, null, 2), 'utf8');
-
+      await delay(2000);  //同時実行のシミュレーションに5秒待つ
+      //データ書き込み
+      await fs.writeFile(lotteryFilePath, JSON.stringify(lottery, null, 2), 'utf8');
+    }
     const newVotes = new Votes({
       voter: req.body.voter,
       no: req.body.no,
@@ -103,6 +109,11 @@ app.post('/vote', async (req, res) => {
       score: req.body.score,
       lottery: oldId
     });
+    // 重複投票を防ぐ
+    const same = await Votes.findOne({voter: req.body.voter, no: req.body.no}).exec();
+    if(same) {
+      return res.status(400).json({ message: "You have already voted" });
+    }
     await newVotes.save();
     res.status(201).json(newVotes);
   } catch (error: any) {
