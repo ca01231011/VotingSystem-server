@@ -9,10 +9,11 @@ import { Mutex } from 'async-mutex';
 import path from 'path';
 import cors from 'cors';
 import cookieparser from 'cookie-parser';
+import {corsOrigin, mongoServer} from '../systemconfig';
 
 
 //MongoDBにつなぐ準備
-mongoose.connect("mongodb://mongo:27017/votingDB", {
+mongoose.connect("mongodb://"+mongoServer+"/votingDB", {
   poolSize: 10,
   authSource: "admin",
   user: "root",
@@ -31,7 +32,7 @@ const mutex = new Mutex();  //排他処理用のmutex
 const lotteryFilePath = path.join(__dirname, './lottery.json');
 
 // CORSを許可
-app.use(cors({"origin": "http://localhost" ,"credentials": true}));
+app.use(cors({"origin": corsOrigin ,"credentials": true}));
 
 app.use(cookieparser());
 
@@ -167,10 +168,12 @@ app.get('/vote_status', async (req, res) => {
     const noNumber = Number(noParam);
     const status = await Status.findOne({no: noNumber}).exec();
     if(!status) {
+      console.log(noNumber);
       return res.status(404).json({ message: "collection status not found" });
     }
     res.json({no: status.no, status: status.status});
   } catch (error: any) {
+    console.log(error);
     res.status(500).json({ message: error.message });
   }
 });
