@@ -1,2 +1,0 @@
-export const corsOrigin = 'http://localhost';
-export const mongoServer = 'mongo:27017';
