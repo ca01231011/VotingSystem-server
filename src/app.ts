@@ -77,6 +77,27 @@ app.get('/voter/:voter', async (req, res) => {
   res.json({voter: voter, lottery: myLottery, voted: no});
 })
 
+// 懸賞番号のリセット
+app.post('/reset/lottery', async (req, res) => {
+  try {
+    const lottery = JSON.parse(await fs.readFile(lotteryFilePath, 'utf8'));
+    lottery.id = 0;
+    await fs.writeFile(lotteryFilePath, JSON.stringify(lottery, null, 2), 'utf8');
+    res.status(201).json({ message: "reset lottery id"});
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// 投票データを削除する
+app.delete('/delete/votes', async (req, res) => {
+  try {
+    await Votes.deleteMany({});
+    res.status(200).json({ message: 'delete votes' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 // 作品へのスコア投票
 app.post('/vote', async (req, res) => {
@@ -88,13 +109,12 @@ app.post('/vote', async (req, res) => {
         return res.status(400).json({ message: "Voting is closed" });
       }
     }
-    // 投票履歴から懸賞番号を取り出す
-    const voted = await Votes.findOne({ voter: req.body.voter}).exec();
     let oldId;
-    if(voted) {
-      oldId = voted.lottery;
+    // 審査員は懸賞番号を9999に固定
+    if (req.body.type === "2ax5") {
+      oldId = 9999;
     } else {
-      //データを読む
+      //懸賞番号を読む
       const lottery = JSON.parse(await fs.readFile(lotteryFilePath, 'utf8'));
       oldId = lottery.id; 
       lottery.id += 1;

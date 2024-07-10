@@ -15,11 +15,7 @@ interface IStatus extends Document {
   createdAt: Date;
   isActive: boolean;
 }
-interface ILottery extends Document {
-  lottery: Number,
-  createdAt: Date;
-  isActive: boolean;
-}
+
 
 const votesSchema: Schema = new Schema({
   voter: { type: String, required: true },
@@ -38,13 +34,5 @@ const statusSchema: Schema = new Schema({
   isActive: { type: Boolean, default: true },
 });
 
-const lotterySchema: Schema = new Schema({
-  lottery: { type: Number, required: true },
-  createdAt: { type: Date, default: Date.now },
-  isActive: { type: Boolean, default: true },
-});
-
-
 export const Votes = mongoose.model<IVotes>('Votes', votesSchema);
 export const Status = mongoose.model<IStatus>('Status', statusSchema);
-export const Lottery = mongoose.model<ILottery>('Lottery', lotterySchema);

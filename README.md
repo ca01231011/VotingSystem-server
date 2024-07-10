@@ -8,7 +8,7 @@
 + 35行目のcorsの設定
 + テスト用にdelay()で送信を遅延しているのでなおす
 + cookieの保存時間の設定（現在は8時間）
-
++ サーバー上でapp.tsをコンパイルしたときに、コンパイル先が/dist/src/app.jsとなるため、app.jsと同じ階層にlottery.jsonを作っておく
 ***
 # API    
 ### <span style="color:yellow;">新規投票者ID取得</span>
@@ -28,12 +28,33 @@
 #### レスポンス例
 ``` json
 {
-  "voter": "000",
+  "voter": "bbb",
   "lottery": [
-    "7"
+    "0"
+  ],
+  "voted": [
+    1
   ]
 }
-``` 
+```
++ voted ・・・ 投票済みの作品番号
++ 投票情報を消すならば、votedは使わない。残しても問題はないです。
++ 各作品ごとに懸賞番号をリセットになったので、Webサーバーではlotteryの要素[0]しか使わない。
+
+***
+### <span style="color:yellow;">懸賞番号のリセット</span>
+#### API
+`POST /reset/lottery`   
+#### レスポンス例
+``` json
+{
+  "message": "reset lottery id"
+}
+```
+***
+### <span style="color:yellow;">投票データを削除する</span>
+#### API
+`DELETE /delete/votes`   
 ***
 ### <span style="color:yellow;">作品へのスコア投票</span>
 #### API
@@ -52,6 +73,7 @@
 + type 文字列　・・・　投票者タイプ
 + score 数値　・・・　１～５までの評価
 + 作品のステータスが0（クローズ）になっていたらエラーを返す
++ 審査員は懸賞番号を9999に固定
 #### レスポンス例
 ``` json
 {
