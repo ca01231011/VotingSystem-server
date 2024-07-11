@@ -39,11 +39,6 @@ app.use(cookieparser());
 //リクエストボディをJSONとして解釈する
 app.use(bodyParser.json());
 
-//遅延処理関数
-function delay(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 
 // 新規投票者ID取得
 app.get('/voter/new', async (req, res) => {
@@ -101,9 +96,10 @@ app.delete('/delete/votes', async (req, res) => {
 
 // 作品へのスコア投票
 app.post('/vote', async (req, res) => {
+  const status = await Status.findOne({no: req.body.no}).exec();
+  const voted = await Votes.findOne({ voter: req.body.voter}).exec();
   const release = await mutex.acquire(); 
   try {
-    const status = await Status.findOne({no: req.body.no}).exec();
     if(status) {
       if(status.status === 0) {
         return res.status(400).json({ message: "Voting is closed" });
@@ -116,7 +112,6 @@ app.post('/vote', async (req, res) => {
       oldId = 9999;
     } else {
       // 投票履歴から懸賞番号を取り出す
-      const voted = await Votes.findOne({ voter: req.body.voter}).exec();
       if(voted) {
         oldId = voted.lottery;
       } else {
@@ -124,8 +119,7 @@ app.post('/vote', async (req, res) => {
         const lottery = JSON.parse(await fs.readFile(lotteryFilePath, 'utf8'));
         oldId = lottery.id; 
         lottery.id += 1;
-
-        await delay(2000);  //同時実行のシミュレーションに5秒待つ
+        
         //データ書き込み
         await fs.writeFile(lotteryFilePath, JSON.stringify(lottery, null, 2), 'utf8');
       }
