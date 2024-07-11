@@ -46,16 +46,18 @@ app.get('/voter/new', async (req, res) => {
     if (req.cookies) {
       //リクエストからclientIdという名前のcookieを取得
       const voter = req.cookies.voter;
+      console.log("voter:"+voter);
       if (voter) {
         //clientIdがあればそのまま返す
-        res.cookie('voter', voter, { maxAge: 28800 });      
+        res.cookie('voter', voter, { maxAge: 28800, secure: true, sameSite: 'none' });      
         return res.json({ voter });
       }
     }
   
     const newId = uuidv4();
+    console.log("new id:" + newId);
     //newIDをclientIdという名前でcookieに保存。有効期限は8時間
-    res.cookie('voter', newId, { maxAge: 28800 });
+    res.cookie('voter', newId, { maxAge: 28800, secure: true, sameSite: 'none' });
     res.json({ voter: newId });
 });
 
