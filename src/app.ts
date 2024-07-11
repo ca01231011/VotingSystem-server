@@ -96,10 +96,8 @@ app.delete('/delete/votes', async (req, res) => {
 
 // 作品へのスコア投票
 app.post('/vote', async (req, res) => {
-  const status = await Status.findOne({no: req.body.no}).exec();
-  const voted = await Votes.findOne({ voter: req.body.voter}).exec();
-  const release = await mutex.acquire(); 
   try {
+    const status = await Status.findOne({no: req.body.no}).exec();
     if(status) {
       if(status.status === 0) {
         return res.status(400).json({ message: "Voting is closed" });
@@ -112,16 +110,24 @@ app.post('/vote', async (req, res) => {
       oldId = 9999;
     } else {
       // 投票履歴から懸賞番号を取り出す
+      const voted = await Votes.findOne({ voter: req.body.voter}).exec();
       if(voted) {
         oldId = voted.lottery;
       } else {
-        //懸賞番号を読む
-        const lottery = JSON.parse(await fs.readFile(lotteryFilePath, 'utf8'));
-        oldId = lottery.id; 
-        lottery.id += 1;
-        
-        //データ書き込み
-        await fs.writeFile(lotteryFilePath, JSON.stringify(lottery, null, 2), 'utf8');
+        const release = await mutex.acquire(); 
+        try {
+          //懸賞番号を読む
+          const lottery = JSON.parse(await fs.readFile(lotteryFilePath, 'utf8'));
+          oldId = lottery.id; 
+          lottery.id += 1;
+          
+          //データ書き込み
+          await fs.writeFile(lotteryFilePath, JSON.stringify(lottery, null, 2), 'utf8');
+        } catch (error: any) {
+          res.status(400).json({ message: error.message });
+        } finally {
+          release();  //mutexを解放
+        }
       }
     }
     const newVotes = new Votes({
@@ -140,9 +146,7 @@ app.post('/vote', async (req, res) => {
     res.status(201).json(newVotes);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
-  } finally {
-    release();  //mutexを解放
-  }
+  } 
 });
 
 // 作品への投票結果取得
@@ -174,9 +178,9 @@ app.get('/vote', async (req, res) => {
     eachArray.forEach((score) => {
       count += score;
     })
-    const result: number = count / eachLength;
+    // const result: number = count / eachLength;  平均から合計に変更したためコメントアウトにしてます
 
-    res.json({no: noNumber, score: result, each: eachArray});
+    res.json({no: noNumber, score: count, each: eachArray});
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

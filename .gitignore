@@ -1,3 +1,4 @@
 node_modules
 systemconfig.ts
 dist
+src/lottery.json
