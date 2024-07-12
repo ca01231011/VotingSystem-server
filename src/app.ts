@@ -176,10 +176,14 @@ app.get('/vote', async (req, res) => {
     eachArray.unshift(audienceAverage);
     // 結果の計算
     let count: number = 0;
-    let eachLength = eachArray.length;
-    eachArray.forEach((score) => {
-      count += score;
-    })
+    // 審査員のスコア重複対応
+    for(let i: number = 0; i < 4; i++) {
+      if(eachArray[i] === undefined) {
+        count += 0;
+      }else {
+        count += eachArray[i];
+      }
+    }
     // const result: number = count / eachLength;  平均から合計に変更したためコメントアウトにしてます
 
     res.json({no: noNumber, score: count, each: eachArray});
